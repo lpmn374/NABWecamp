@@ -1,0 +1,42 @@
+.todo-item {
+  border: 1px solid var(--border);
+  padding: 16px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg);
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+}
+
+.todo-item:hover {
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.05);
+}
+
+.todo-item button {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  transition:
+    background 0.2s,
+    opacity 0.2s;
+  margin-left: 8px;
+}
+
+.todo-item button:first-of-type {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.todo-item button:last-of-type {
+  background: #ef3d3d;
+  color: #ffffff;
+}
+
+.todo-item button:hover {
+  opacity: 0.8;
+}
