@@ -1,80 +1,61 @@
 import { useState, useEffect } from "react";
 import TodoItem from "./components/todoItem";
+import { useTodos } from "./hooks/useTodos";
+import { useTodoFilter } from "./hooks/useTodoFilter";
+import { useDebounced } from "./hooks/useDebounced";
+import { useItemsPerPage } from "./hooks/useWindowResize";
+import { validateTaskName } from "./utils/taskNameValidation";
 import "./App.css";
 
 function App() {
-  const [todos, setTodos] = useState([]);
-  const [inputVal, setInputVal] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [debouncedTerm, setDebouncedTerm] = useState("");
-  const [itemsPerPage, setItemsPerPage] = useState(3);
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 300) setItemsPerPage(1);
-      else if (window.innerWidth < 768) setItemsPerPage(2);
-      else setItemsPerPage(3);
-    };
-    window.addEventListener("resize", handleResize);
-    handleResize();
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-  useEffect(() => {
-    fetch("https://jsonplaceholder.typicode.com/todos?_limit=10")
-      .then((res) => res.json())
-      .then((data) => setTodos(data));
-  }, []);
-
-  // Add/Update/Delete todos
-  const handleAdd = (title) => {
-    const newTodo = { id: Date.now(), title, completed: false };
-    setTodos([newTodo, ...todos]);
-  };
-  const handleUpdate = (id, newTitle) => {
-    setTodos(todos.map((t) => (t.id === id ? { ...t, title: newTitle } : t)));
-  };
-  const handleDelete = (id) => {
-    setTodos(todos.filter((todo) => todo.id !== id));
+  const [inputVal, setInputVal] = useState("");
+  const itemsPerPage = useItemsPerPage();
+  const debouncedTerm = useDebounced(searchTerm, 500);
+  const { todos, loading, error, handleAdd, handleUpdate, handleDelete } =
+    useTodos();
+  const { paginatedTodos, totalPages } = useTodoFilter(
+    todos,
+    debouncedTerm,
+    currentPage,
+    itemsPerPage,
+  );
+  const handleSaveAdd = () => {
+    const { isValid, message, data } = validateTaskName(inputVal);
+    if (isValid) {
+      handleAdd(data);
+      setInputVal("");
+    } else alert(message);
   };
 
   useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedTerm(searchTerm);
-    }, 500);
-    return () => clearTimeout(handler);
+    setCurrentPage(1);
   }, [searchTerm]);
-  const filteredTodos = todos.filter((t) =>
-    t.title.toLowerCase().includes(debouncedTerm.toLowerCase()),
-  );
 
-  const paginatedTodos = filteredTodos.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
-  );
-  const totalPages = Math.ceil(filteredTodos.length / itemsPerPage);
-
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
   return (
     <div className="app-container">
       <div>
         <input
           type="text"
-          placeholder="Search..."
+          placeholder="Search tasks..."
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
 
-      <div>
-        <input value={inputVal} onChange={(e) => setInputVal(e.target.value)} />
-        <button
-          className="add-task-btn"
-          onClick={() => {
-            if (inputVal) {
-              handleAdd(inputVal);
-              setInputVal("");
-            }
+      <div style={{ marginTop: "20px" }}>
+        <input
+          placeholder="Enter task name..."
+          value={inputVal}
+          // maxLength={100}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleSaveAdd();
           }}
-        >
+          onChange={(e) => setInputVal(e.target.value)}
+        />
+        <button className="add-task-btn" onClick={handleSaveAdd}>
           Add Task
         </button>
       </div>
@@ -89,7 +70,7 @@ function App() {
             />
           ))
         ) : (
-          <p>No todos found</p>
+          <p>No task found</p>
         )}
       </div>
       <div className="pagination">
@@ -99,9 +80,11 @@ function App() {
         >
           Previous
         </button>
-        <span>Page {currentPage}</span>
+        <span>
+          Page {currentPage} of {totalPages || 1}
+        </span>
         <button
-          disabled={currentPage === totalPages}
+          disabled={currentPage >= totalPages}
           onClick={() => setCurrentPage((prev) => prev + 1)}
         >
           Next
